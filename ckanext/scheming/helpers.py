@@ -4,6 +4,7 @@ import re
 import datetime
 import pytz
 import json
+import ckan.plugins.toolkit as toolkit
 import six
 
 from jinja2 import Environment
@@ -30,6 +31,7 @@ def lang():
 @helper
 def scheming_composite_separator():
     return config.get('scheming.composite.separator', '-')
+
 
 @helper
 def scheming_language_text(text, prefer_lang=None):
@@ -152,7 +154,50 @@ def scheming_datastore_choices(field):
     additional_choices = field.get('datastore_additional_choices', [])
 
     return additional_choices + datastore_choices
+    
+def load_json(j):
+    try:
+        new_val = json.loads(j)
+    except Exception:
+        new_val = j
+    return new_val
 
+@helper
+def scheming_dataset_choices(field):
+    """
+    Required scheming field:
+    "dataset_field_filter": ["fields", "to", "return", "from", "search"]
+
+    Optional scheming fields:
+    "dataset_choices_columns": {
+        "value": "value_column_name",
+        "label": "label_column_name" }
+    "dataset_choices_limit": 1000 (default)
+
+    When columns aren't specified the first column is used as value
+    and second column used as label.
+    """
+    filter = field.get('dataset_field_filter')
+    limit = field.get('dataset_choices_limit', 1000)
+    columns = field.get('dataset_choices_columns')
+    fields = None
+    if columns:
+        fields = [columns['value'], columns['label']]
+
+    lc = LocalCKAN(username='')
+    try:
+        result = toolkit.get_action('package_search')(data_dict={
+            'fl': filter,
+            'rows': limit,
+        })
+    except (NotFound, NotAuthorized):
+        return []
+
+    if not fields:
+        fields = [f['id'] for f in result['fields'] if f['id'] != '_id']
+
+    return [{'value': r[fields[0]], 'label': load_json(r[fields[1]])}
+            for r in result.get('results')]
 
 @helper
 def scheming_field_required(field):
@@ -438,4 +483,29 @@ def scheming_flatten_subfield(subfield, data):
         )
         for k in record:
             flat[prefix + k] = record[k]
+    return flat
+
+@helper
+def scheming_flatten_simple_subfield(subfield, data):
+    """
+    Return flattened_data that converts all nested data for this subfield
+    into {field_name}-{subfield_name} values at the top level,
+    so that it matches the names of form fields submitted.
+
+    If data already contains flattened subfields (e.g. rendering values
+    after a validation error) then they are returned as-is.
+    """
+    from ckantoolkit import h
+    flat = dict(data)
+    sep = h.scheming_composite_separator()
+
+    if subfield['field_name'] not in data:
+        return flat
+
+    for field, value in data[subfield['field_name']].items():
+        prefix = '{field_name}{sep}'.format(
+            field_name=subfield['field_name'],
+            sep=sep,
+        )
+        flat[prefix + field] = value
     return flat

@@ -262,7 +262,7 @@ class SchemingDatasetsPlugin(p.SingletonPlugin, DefaultDatasetForm,
                     scheming_schema,
                     convert_this
                 )
-                if convert_this and 'repeating_subfields' in f:
+                if convert_this and ('repeating_subfields' in f or 'simple_subfields' in f):
                     composite_convert_fields.append(f['field_name'])
 
         def composite_convert_to(key, data, errors, context):
@@ -284,6 +284,14 @@ class SchemingDatasetsPlugin(p.SingletonPlugin, DefaultDatasetForm,
                     if ex['key'] not in composite_convert_fields
                 ]
         else:
+            dataset_simple_composite = {
+                f['field_name']
+                for f in scheming_schema['dataset_fields']
+                if 'simple_subfields' in f
+            }
+            if dataset_simple_composite:
+                expand_form_simple_composite(data_dict, dataset_simple_composite)
+
             dataset_composite = {
                 f['field_name']
                 for f in scheming_schema['dataset_fields']
@@ -358,7 +366,34 @@ def expand_form_composite(data, fieldnames):
         except (IndexError, ValueError):
             pass  # best-effort only
 
+def expand_form_simple_composite(data, fieldnames):
+    """
+    when submitting dataset/resource form composite fields look like
+    "field-subfield..." convert these to lists of dicts
+    """
+    sep = p.toolkit.h.scheming_composite_separator()
 
+    # if "field" exists, don't look for "field-subfield"
+    fieldnames -= set(data)
+    if not fieldnames:
+        return
+    for key in sorted(data):
+        if sep not in key:
+            continue
+        parts = key.split(sep)
+        if parts[0] not in fieldnames:
+            continue
+        comp = data.setdefault(parts[0], [])
+        try:
+            try:
+                comp[0][sep.join(parts[1:])] = data[key]
+                del data[key]
+            except IndexError:
+                comp.append({})
+                comp[0][sep.join(parts[1:])] = data[key]
+                del data[key]
+        except (IndexError, ValueError):
+            pass  # best-effort only
 
 class SchemingGroupsPlugin(p.SingletonPlugin, _GroupOrganizationMixin,
                            DefaultGroupForm, _SchemingMixin):
@@ -442,11 +477,37 @@ class SchemingNerfIndexPlugin(p.SingletonPlugin):
         for d in schemas[data_dict['type']]['dataset_fields']:
             if d['field_name'] not in data_dict:
                 continue
-            if 'repeating_subfields' in d:
+            if 'simple_subfields' in d and isinstance(data_dict[d['field_name']], list):
+                data_dict[d['field_name']] = data_dict[d['field_name']][0]
+            if 'repeating_subfields' in d or 'simple_subfields' in d:
                 data_dict[d['field_name']] = json.dumps(data_dict[d['field_name']])
 
         return data_dict
 
+    def after_search(self, search_results, search_params):
+        if 'results' not in search_results:
+            return search_results
+        schemas = SchemingDatasetsPlugin.instance._expanded_schemas
+        for data_dict in search_results['results']:
+            if data_dict['type'] not in schemas:
+                continue
+            for d in schemas[data_dict['type']]['dataset_fields']:
+                if d['field_name'] not in data_dict:
+                    continue
+                if 'simple_subfields' in d and isinstance(data_dict[d['field_name']], list):
+                    data_dict[d['field_name']] = data_dict[d['field_name']][0]
+        return search_results
+
+    def after_show(self, context, data_dict):
+        schemas = SchemingDatasetsPlugin.instance._expanded_schemas
+        if data_dict['type'] not in schemas:
+            return data_dict
+        for d in schemas[data_dict['type']]['dataset_fields']:
+            if d['field_name'] not in data_dict:
+                continue
+            if 'simple_subfields' in d and isinstance(data_dict[d['field_name']], list):
+                data_dict[d['field_name']] = data_dict[d['field_name']][0]
+        return data_dict
 
 def _load_schemas(schemas, type_field):
     out = {}
@@ -513,7 +574,12 @@ def _field_output_validators(f, schema, convert_extras,
     """
     Return the output validators for a scheming field f
     """
-    if 'repeating_subfields' in f:
+    if 'simple_subfields' in f:
+        validators = {
+            sf['field_name']: _field_output_validators(sf, schema, False)
+            for sf in f['simple_subfields']
+        }
+    elif 'repeating_subfields' in f:
         validators = {
             sf['field_name']: _field_output_validators(sf, schema, False)
             for sf in f['repeating_subfields']
@@ -548,7 +614,12 @@ def _field_validators(f, schema, convert_extras):
 
     # If this field contains children, we need a special validator to handle
     # them.
-    if 'repeating_subfields' in f:
+    if 'simple_subfields' in f:
+        validators = {
+            sf['field_name']: _field_validators(sf, schema, False)
+            for sf in f['simple_subfields']
+        }
+    elif 'repeating_subfields' in f:
         validators = {
             sf['field_name']: _field_validators(sf, schema, False)
             for sf in f['repeating_subfields']
@@ -576,7 +647,12 @@ def _field_create_validators(f, schema, convert_extras):
 
     # If this field contains children, we need a special validator to handle
     # them.
-    if 'repeating_subfields' in f:
+    if 'simple_subfields' in f:
+        validators = {
+            sf['field_name']: _field_create_validators(sf, schema, False)
+            for sf in f['simple_subfields']
+        }
+    elif 'repeating_subfields' in f:
         validators = {
             sf['field_name']: _field_create_validators(sf, schema, False)
             for sf in f['repeating_subfields']

@@ -51,4 +51,9 @@
 {% endblock %}
 
 {% block metadata_fields %}
+  {% block package_metadata_fields_custom %}
+    {% block custom_fields %}
+      {% snippet 'snippets/custom_form_fields.html', extras=data.extras, errors=errors, limit=1 %}
+    {% endblock %}
+  {% endblock %}
 {% endblock %}
