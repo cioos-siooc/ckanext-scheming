@@ -405,7 +405,7 @@ class TestSubfieldResourceForm(object):
 
         data = {"id": "", "save": ""}
 
-        data["schedule{sep}0{sep}impact".format(sep)] = "P"
+        data["schedule{sep}0{sep}impact".format(sep=sep)] = "P"
 
         try:
             app.post(url, environ_overrides=env, data=data, follow_redirects=False)
