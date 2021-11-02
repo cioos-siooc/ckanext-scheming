@@ -6,6 +6,9 @@ from bs4 import BeautifulSoup
 
 from ckantoolkit.tests.factories import Sysadmin, Dataset
 from ckantoolkit.tests.helpers import call_action
+        
+import ckan.plugins.toolkit as toolkit
+sep = toolkit.h.scheming_composite_separator()
 
 
 @pytest.fixture
@@ -328,7 +331,7 @@ class TestSubfieldDatasetForm(object):
     def test_dataset_form_includes_subfields(self, app):
         env, response = _get_package_new_page_as_sysadmin(app, 'test-subfields')
         form = BeautifulSoup(response.body).select("form")[1]
-        assert form.select("fieldset[name=scheming-repeating-subfields]")
+        assert form.select("fieldset[name=scheming{sep}repeating{sep}subfields]".format(sep=sep))
 
     def test_dataset_form_create(self, app, sysadmin_env):
         data = {"save": "", "_ckan_phase": 1}
@@ -387,7 +390,7 @@ class TestSubfieldResourceForm(object):
 
         env, response = _get_resource_new_page_as_sysadmin(app, dataset["id"])
         form = BeautifulSoup(response.body).select_one("#resource-edit")
-        assert form.select("fieldset[name=scheming-repeating-subfields]")
+        assert form.select("fieldset[name=scheming{sep}repeating{sep}subfields]".format(sep=sep))
 
     def test_resource_form_create(self, app):
         dataset = Dataset(type="test-subfields", citation=[{'originator': 'na'}])
@@ -401,7 +404,9 @@ class TestSubfieldResourceForm(object):
             url = '/dataset/new_resource/' + dataset["id"]
 
         data = {"id": "", "save": ""}
-        data["schedule-0-impact"] = "P"
+
+        data["schedule{sep}0{sep}impact".format(sep)] = "P"
+
         try:
             app.post(url, environ_overrides=env, data=data, follow_redirects=False)
         except TypeError:
