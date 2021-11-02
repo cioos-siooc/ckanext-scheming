@@ -337,8 +337,8 @@ class TestSubfieldDatasetForm(object):
         data = {"save": "", "_ckan_phase": 1}
 
         data["name"] = "subfield_dataset_1"
-        data["citation-0-originator"] = ['mei', 'ahmed']
-        data["contact_address-0-address"] = 'anyplace'
+        data["citation{sep}0{sep}originator".format(sep=sep)] = ['mei', 'ahmed']
+        data["contact_address{sep}0{sep}address".format(sep=sep)] = 'anyplace'
 
         url = '/test-subfields/new'
         try:
@@ -361,13 +361,13 @@ class TestSubfieldDatasetForm(object):
         )
         form = BeautifulSoup(response.body).select_one("#dataset-edit")
         assert form.select_one(
-            "input[name=citation-1-originator]"
+            "input[name=citation{sep}1{sep}originator]".format(sep=sep)
         ).attrs['value'] == 'ahmed'
 
         data = {"save": ""}
-        data["citation-0-originator"] = ['ling']
-        data["citation-1-originator"] = ['umet']
-        data["contact_address-0-address"] = 'home'
+        data["citation{sep}0{sep}originator".format(sep=sep)] = ['ling']
+        data["citation{sep}1{sep}originator".format(sep=sep)] = ['umet']
+        data["contact_address{sep}0{sep}address".format(sep=sep)] = 'home'
         data["name"] = dataset["name"]
 
         url = '/test-subfields/edit/' + dataset["id"]
@@ -390,7 +390,7 @@ class TestSubfieldResourceForm(object):
 
         env, response = _get_resource_new_page_as_sysadmin(app, dataset["id"])
         form = BeautifulSoup(response.body).select_one("#resource-edit")
-        assert form.select("fieldset[name=scheming{sep}repeating{sep}subfields]".format(sep=sep))
+        assert form.select('fieldset[name=\"scheming{sep}repeating{sep}subfields\"]'.format(sep=sep))
 
     def test_resource_form_create(self, app):
         dataset = Dataset(type="test-subfields", citation=[{'originator': 'na'}])
@@ -451,10 +451,10 @@ class TestSubfieldResourceForm(object):
             )
 
         data = {"id": dataset["resources"][0]["id"], "save": ""}
-        data["schedule-0-frequency"] = '1y'
-        data["schedule-0-impact"] = 'A'
-        data["schedule-1-frequency"] = '1m'
-        data["schedule-1-impact"] = 'P'
+        data["schedule{sep}0{sep}frequency".format(sep=sep)] = '1y'
+        data["schedule{sep}0{sep}impact".format(sep=sep)] = 'A'
+        data["schedule{sep}1{sep}frequency".format(sep=sep)] = '1m'
+        data["schedule{sep}1{sep}impact".format(sep=sep)] = 'P'
 
         try:
             app.post(url, environ_overrides=env, data=data, follow_redirects=False)
