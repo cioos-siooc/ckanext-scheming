@@ -344,29 +344,53 @@ def expand_form_composite(data, fieldnames):
     fieldnames -= set(data)
     if not fieldnames:
         return
-    indexes = {}
+    # init fieldnames indexes to empty dictinarys
+    indexes = dict((key, {}) for key in fieldnames)
+
+    # pad indexes with leading zeros so that sorting of 10 items or more works correctly
+    # TODO: make this change to the indexes when they are first stored, likely
+    # need updating scheming_flatten_subfield and others.
+    for key in data:
+        if sep not in key:
+            continue
+        parts = key.split(sep)
+        if parts[0] not in fieldnames:
+            continue
+        parts[1] = parts[1].zfill(3)
+        data[sep.join(parts)] = data.pop(key)
+
     for key in sorted(data):
         if sep not in key:
             continue
         parts = key.split(sep)
         if parts[0] not in fieldnames:
             continue
-        if parts[1] not in indexes:
-            indexes[parts[1]] = len(indexes)
+        if parts[1] not in indexes[parts[0]]:
+            indexes[parts[0]][parts[1]] = len(indexes[parts[0]])
+
         comp = data.setdefault(parts[0], [])
-        parts[1] = indexes[parts[1]]
+        parts[1] = indexes[parts[0]][parts[1]]
         try:
             try:
-                # new scheming repeating subfields are one relative so must subtract 1 from index or get index error
-                comp[int(parts[1]) - 1][sep.join(parts[2:])] = data[key]
+                comp[int(parts[1])][sep.join(parts[2:])] = data[key]
                 del data[key]
             except IndexError:
                 comp.append({})
-                # new scheming repeating subfields are one relative so must subtract 1 from index or get index error
-                comp[int(parts[1]) - 1][sep.join(parts[2:])] = data[key]
+                comp[int(parts[1])][sep.join(parts[2:])] = data[key]
                 del data[key]
         except (IndexError, ValueError):
             pass  # best-effort only
+
+    # remove padding of indexes, this might not be needed if all keys have
+    # been merged and removed
+    for key in data:
+        if sep not in key:
+            continue
+        parts = key.split(sep)
+        if parts[0] not in fieldnames:
+            continue
+        parts[1] = parts[1].lstrip('0')
+        data[sep.join(parts)] = data.pop(key)
 
 def expand_form_simple_composite(data, fieldnames):
     """
