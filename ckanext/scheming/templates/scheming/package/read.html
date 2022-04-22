@@ -12,10 +12,19 @@
   {% if (h.scheming_field_by_name(schema.dataset_fields, 'notes') or
     h.scheming_field_by_name(schema.dataset_fields, 'notes_translated')) and
     pkg.notes%}
-    <div class="notes embedded-content">
+    <div class="notes embedded-content"
+        data-module="truncate"
+        data-max_length="750"
+        data-more="Read more >>"
+        data-less="<< Read less"
+        data-link_prefix=""
+        data-link_suffix=""
+        data-css_more_class="truncator-link truncator-more"
+        data-css_less_class="truncator-link truncator-less">
       {{ h.render_markdown(h.get_translated(pkg, 'notes')) }}
     </div>
   {% endif %}
+  {% asset 'ckanext-cioos_theme/truncate_js' %}
 {% endblock %}
 
 {% block package_additional_info %}
