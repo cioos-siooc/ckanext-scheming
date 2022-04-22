@@ -9,7 +9,7 @@
       <div class="panel-body">
         <dl class="scheming-subfield-list">
           {% for subfield in field.repeating_subfields %}
-            {% if subfield.field_name in field_data and field_data[subfield.field_name]|length %}
+            {% if subfield.field_name in field_data and field_data[subfield.field_name]|length and subfield.display_snippet is not none %}
             <dt class="dataset-label">
               {{ h.scheming_language_text(subfield.label) }}
             </dt>
