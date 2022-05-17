@@ -59,7 +59,7 @@ def scheming_subfield_limits(field, schema):
         for f in fields:
             if 'repeating_subfields' in f:
                 error_fn = f['field_name'] + '_subfield_length'
-                ll = int(f.get('minumum', 0))
+                ll = int(f.get('minimum', 0))
                 ul = int(f.get('maximum', 0))
                 msg = ''
                 if f.get('required') and ll == 0:
