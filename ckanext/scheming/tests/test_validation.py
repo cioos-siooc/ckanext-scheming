@@ -897,6 +897,61 @@ class TestSubfieldDatasetInvalid(object):
         else:
             raise AssertionError("ValidationError not raised")
 
+    def test_invalid_missing_required_subfield(self):
+        lc = LocalCKAN()
+
+        try:
+            lc.action.package_create(
+                type="test-subfields",
+                name="b_sf_1",
+                temporal_extent=[{'begin': '', 'end': '2000-01-23'}]
+            )
+        except ValidationError as e:
+            assert e.error_dict["temporal_extent"][0]["begin"] == ["Missing value"]
+        else:
+            raise AssertionError("ValidationError not raised")
+
+    def test_invalid_bad_date_subfield(self):
+        lc = LocalCKAN()
+
+        try:
+            lc.action.package_create(
+                type="test-subfields",
+                name="b_sf_1",
+                temporal_extent=[{'begin': '2000-01-23', 'end': 'THEN'}]
+            )
+        except ValidationError as e:
+            assert e.error_dict["temporal_extent"][0]["end"] == ["Date format incorrect"]
+        else:
+            raise AssertionError("ValidationError not raised")
+
+    def test_invalid_subfields_max_length(self):
+        lc = LocalCKAN()
+        try:
+            dataset = lc.action.package_create(
+                type="test-subfields",
+                name="a_sf_1",
+                temporal_extent=[{'begin': '2000-01-23', 'end': '2021-09-13'}, {'begin': '2022-02-23', 'end': ''}]
+            )
+        except ValidationError as e:
+            assert e.error_dict["temporal_extent_subfield_length"] == ["Too many items in subfield Temporal Extent. Found 2 items, expected 1"]
+        else:
+            raise AssertionError("ValidationError not raised")
+            pass
+
+    def test_invalid_subfields_min_length(self):
+        lc = LocalCKAN()
+        try:
+            dataset = lc.action.package_create(
+                type="test-subfields",
+                name="a_sf_1",
+                vertical_extent=[]
+            )
+        except ValidationError as e:
+            assert e.error_dict["vertical_extent_subfield_length"] == ["Too few items in subfield Vertical Extent. Found 0 items, expected 1"]
+        else:
+            raise AssertionError("ValidationError not raised")
+            pass
 
 @pytest.mark.usefixtures("clean_db")
 class TestSubfieldResourceValid(object):

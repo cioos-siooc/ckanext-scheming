@@ -44,6 +44,31 @@ dataset_fields:
   - field_name: country
     label: Country
 
+- field_name: temporal_extent
+  label: Temporal Extent
+  minimum: 0
+  maximum: 1
+  repeating_subfields:
+  - field_name: begin
+    label: Begin
+    required: true
+    preset: date
+    form_placeholder: yyyy-mm-dd
+  - field_name: end
+    label: End
+    preset: date
+    form_placeholder: yyyy-mm-dd
+
+- field_name: vertical_extent
+  label: Vertical Extent
+  required: True
+  minimum: 0
+  maximum: 1
+  repeating_subfields:
+  - field_name: min
+    label: Min
+  - field_name: max
+    label: Max
 
 resource_fields:
 

@@ -52,6 +52,44 @@ register_validator(unicode_safe)
 
 @scheming_validator
 @register_validator
+def scheming_subfield_limits(field, schema):
+    def validator(key, data, errors, context):
+        fields = schema.get('dataset_fields', []) + schema.get('resource_fields', [])
+        key_tuples = data.keys()
+        for f in fields:
+            if 'repeating_subfields' in f:
+                error_fn = f['field_name'] + '_subfield_length'
+                ll = int(f.get('minumum', 0))
+                ul = int(f.get('maximum', 0))
+                msg = ''
+                if f.get('required') and ll == 0:
+                    ll = 1
+
+                iters = [tup[1] for tup in key_tuples if tup[0] == f['field_name']]
+
+                if iters:
+                    num_of_entries = max(iters) + 1
+                else:
+                    num_of_entries = 0
+
+                if num_of_entries < ll:
+                    msg = _('Too few items in subfield %s. Found %i items, expected %i') \
+                        % (f.get('label', f['field_name']), num_of_entries, ll)
+
+                elif ul and num_of_entries > ul:
+                    msg = _('Too many items in subfield %s. Found %i items, expected %i') \
+                        % (f.get('label', f['field_name']), num_of_entries, ul)
+
+                if msg:
+                    if (error_fn,) not in errors:
+                        errors[(error_fn,)] = []
+                    errors[(error_fn,)].extend([msg])
+                    raise StopOnError
+    return validator
+
+
+@scheming_validator
+@register_validator
 def scheming_choices(field, schema):
     """
     Require that one of the field choices values is passed.
