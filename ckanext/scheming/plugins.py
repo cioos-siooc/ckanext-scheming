@@ -178,12 +178,56 @@ class _GroupOrganizationMixin(object):
             _field_output_validators_group
             if action_type == 'show' else _field_validators
         )
+        composite_convert_fields = []
         for f in scheming_fields:
             schema[f['field_name']] = get_validators(
                 f,
                 scheming_schema,
                 f['field_name'] not in schema
             )
+            if 'repeating_subfields' in f or 'simple_subfields' in f:
+                composite_convert_fields.append(f['field_name'])
+
+        def composite_convert_to(key, data, errors, context):
+            unflat = unflatten(data)
+            for f in composite_convert_fields:
+                if f not in unflat:
+                    continue
+                data[(f,)] = json.dumps(unflat[f], default=lambda x:None if x == missing else x)
+                convert_to_extras((f,), data, errors, context)
+                del data[(f,)]
+
+        if action_type == 'show':
+            if composite_convert_fields:
+                for ex in data_dict['extras']:
+                    if ex['key'] in composite_convert_fields:
+                        data_dict[ex['key']] = json.loads(ex['value'])
+                data_dict['extras'] = [
+                    ex for ex in data_dict['extras']
+                    if ex['key'] not in composite_convert_fields
+                ]
+        else:
+            organization_simple_composite = {
+                f['field_name']
+                for f in scheming_schema['fields']
+                if 'simple_subfields' in f
+            }
+            if organization_simple_composite:
+                expand_form_simple_composite(data_dict, organization_simple_composite)
+
+            organization_composite = {
+                f['field_name']
+                for f in scheming_schema['fields']
+                if 'repeating_subfields' in f
+            }
+            if organization_composite:
+                expand_form_composite(data_dict, organization_composite)
+
+            # convert composite package fields to extras so they are stored
+            if composite_convert_fields:
+                schema = dict(
+                    schema,
+                    __after=schema.get('__after', []) + [composite_convert_to])
 
         return navl_validate(data_dict, schema, context)
 
