@@ -1,13 +1,17 @@
 {% import 'macros/form.html' as form %}
-{% if data[field.display_uri_field] %}
-  <a href="{{data[field.display_uri_field]}}">
+{% set uri = h.cioos_get_fully_qualified_package_uri(
+    data,
+    uri_field=field.display_uri_field or field.display_uri_field_prefix )|first
+%}
+{% if uri and h.is_url(uri) %}
+  <a href="{{uri}}">
   {{ data[field.field_name] }}
-  {% if 'orcid.org' in data[field.display_uri_field] %}
-    <img alt="ORCID logo" src="/base/images/ORCIDiD_icon16x16.png" width="16" height="16" />
-  {% elif 'ror.org' in data[field.display_uri_field] %}
-    <img alt="ROR logo" src="/base/images/ror-logo-small.png" height="16" />
-  {% elif 'wikidata' in data[field.display_uri_field] %}
-    <img alt="wiki logo" src="/base/images/wikidata.png" height="16" />
+  {% if 'orcid.org' in uri %}
+    <img alt="ORCID logo" src="/base/images/orcid.logo.icon.svg" class="identifier_icon_list" />
+  {% elif 'ror.org' in uri %}
+    <img alt="ROR logo" src="/base/images/ror.svg" class="identifier_icon_list" />
+  {% elif 'wikidata' in uri %}
+    <img alt="wiki logo" src="/base/images/wikidata.png" class="identifier_icon_list" />
   {% endif %}
   </a>
 {% else %}
