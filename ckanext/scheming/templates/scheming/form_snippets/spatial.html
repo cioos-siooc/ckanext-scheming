@@ -128,6 +128,6 @@ provide an editable map.
     </div>
     <textarea id="{{ id }}" type="{{ type }}" name="{{ name }}"
         placeholder="paste a GeoJSON Polygon or Multipolygon geometry here" rows=10 style="width:100%;"
-    >{{ value | empty_and_escape }}</textarea>
+    >{{ value | tojson(indent=2) | safe }}</textarea>
   {% endcall %}
 {% endwith %}
