@@ -19,6 +19,9 @@
 {%- endif -%}
 
 {%- if field.field_name in data -%}
+  {%- if data[field.field_name] is mapping -%}
+    {%- set display_snippet = 'scheming/display_snippets/fluent_text.html' -%}
+  {%- endif -%}
   {%- snippet display_snippet,
     field=field,
     data=data,
