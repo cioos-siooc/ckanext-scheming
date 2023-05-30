@@ -18,10 +18,14 @@
   {%- set display_snippet = 'scheming/display_snippets/' + display_snippet -%}
 {%- endif -%}
 
-{%- if field.field_name in data -%}
+{%- if field.field_name in data -%}   
   {%- if data[field.field_name] is mapping -%}
-    {%- set display_snippet = 'scheming/display_snippets/fluent_text.html' -%}
+      {%- set display_snippet = 'scheming/display_snippets/fluent_text.html' -%}
+      {%- if h.scheming_language_text(data[field.field_name]) is eq '' -%}
+        &nbsp;
+      {%- endif -%}
   {%- endif -%}
+
   {%- snippet display_snippet,
     field=field,
     data=data,
