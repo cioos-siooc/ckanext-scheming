@@ -27,8 +27,8 @@ provide an editable map.
     id='field-' + field.field_name,
     label=h.scheming_language_text(field.label),
     placeholder=h.scheming_language_text(field.form_placeholder),
-    value=data[field.field_name],
-    error=errors[field.field_name],
+    value=data.get(field.field_name, {}),
+    error=errors.get(field.field_name),
     classes=['control-medium'],
     is_required=h.scheming_field_required(field)
 %}
