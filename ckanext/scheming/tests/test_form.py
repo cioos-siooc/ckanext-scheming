@@ -386,8 +386,8 @@ class TestSubfieldDatasetForm(object):
 
 @pytest.mark.usefixtures("clean_db")
 class TestSimpleSubfieldDatasetForm(object):
-    def test_dataset_form_includes_simple_subfields(self, app):
-        env, response = _get_package_new_page_as_sysadmin(app, 'test-subfields')
+    def test_dataset_form_includes_simple_subfields(self, app, sysadmin_env):
+        response = _get_package_new_page(app, sysadmin_env, 'test-subfields')
         form = BeautifulSoup(response.body).select("form")[1]
         assert form.select("fieldset[name=scheming-simple-subfields]")
 
