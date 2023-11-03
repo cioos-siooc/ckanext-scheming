@@ -27,8 +27,8 @@ provide an editable map.
     id='field-' + field.field_name,
     label=h.scheming_language_text(field.label),
     placeholder=h.scheming_language_text(field.form_placeholder),
-    value=data[field.field_name],
-    error=errors[field.field_name],
+    value=data.get(field.field_name),
+    error=errors.get(field.field_name),
     classes=['control-medium'],
     is_required=h.scheming_field_required(field)
 %}
@@ -93,13 +93,13 @@ provide an editable map.
             'bbox-east':'field-bbox-east-long',
             'bbox-west':'field-bbox-west-long'}
         -%}
-        <div class="dataset-map"
+        <div class="dataset-map-form"
             data-module="spatial-form"
             data-input_ids="{{ h.dump_json(input_ids) }}"
-            data-extent="{{ value }}"
+            data-extent='{{ h.cioos_load_json(value) | tojson() | safe }}'
             data-module-site_url="{{ h.dump_json(h.url('/', locale='default', qualified=true)) }}"
             data-module-map_config="{{ h.dump_json(map_config) }}">
-          <div id="dataset-map-container"></div>
+          <div id="dataset-map-form-container"></div>
         </div>
         {% asset 'ckanext-spatial/spatial_form_js' %}
         {% asset 'ckanext-spatial/spatial_form_css' %}        
@@ -128,6 +128,6 @@ provide an editable map.
     </div>
     <textarea id="{{ id }}" type="{{ type }}" name="{{ name }}"
         placeholder="paste a GeoJSON Polygon or Multipolygon geometry here" rows=10 style="width:100%;"
-    >{{ value | tojson(indent=2) | safe }}</textarea>
+    >{{ (h.cioos_load_json(value) | tojson() | safe) if value }}</textarea>
   {% endcall %}
 {% endwith %}

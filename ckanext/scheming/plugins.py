@@ -36,7 +36,7 @@ from ckantoolkit import (
     check_ckan_version,
 )
 
-from ckanext.scheming import helpers, validation, logic, loader
+from ckanext.scheming import helpers, validation, logic, loader, views
 from ckanext.scheming.errors import SchemingException
 
 ignore_missing = get_validator('ignore_missing')
@@ -128,8 +128,11 @@ class _SchemingMixin(object):
         # can find it:
         self._store_instance(self)
         self._add_template_directory(config)
-        self._load_presets(config)
 
+        # FIXME: need to read configuration in update_config
+        # because self._schemas need to be defined early for
+        # IDatasetForm
+        self._load_presets(config)
         self._is_fallback = p.toolkit.asbool(
             config.get(self.FALLBACK_OPTION, False)
         )
@@ -198,7 +201,7 @@ class _GroupOrganizationMixin(object):
                 del data[(f,)]
 
         if action_type == 'show':
-            if composite_convert_fields:
+            if composite_convert_fields and data_dict.get('extras'):
                 for ex in data_dict['extras']:
                     if ex['key'] in composite_convert_fields:
                         data_dict[ex['key']] = json.loads(ex['value'])
@@ -235,6 +238,7 @@ class _GroupOrganizationMixin(object):
 class SchemingDatasetsPlugin(p.SingletonPlugin, DefaultDatasetForm,
                              _SchemingMixin):
     p.implements(p.IConfigurer)
+    p.implements(p.IConfigurable)
     p.implements(p.ITemplateHelpers)
     p.implements(p.IDatasetForm, inherit=True)
     p.implements(p.IActions)
@@ -298,9 +302,9 @@ class SchemingDatasetsPlugin(p.SingletonPlugin, DefaultDatasetForm,
         )
 
         composite_convert_fields = []
-        for field_list, destination, convert_extras in fg:
+        for field_list, destination, is_dataset in fg:
             for f in field_list:
-                convert_this = convert_extras and f['field_name'] not in schema
+                convert_this = is_dataset and f['field_name'] not in schema
                 destination[f['field_name']] = get_validators(
                     f,
                     scheming_schema,
@@ -319,7 +323,7 @@ class SchemingDatasetsPlugin(p.SingletonPlugin, DefaultDatasetForm,
                 del data[(f,)]
 
         if action_type == 'show':
-            if composite_convert_fields:
+            if composite_convert_fields and data_dict.get('extras'):
                 for ex in data_dict['extras']:
                     if ex['key'] in composite_convert_fields:
                         data_dict[ex['key']] = json.loads(ex['value'])
@@ -350,7 +354,7 @@ class SchemingDatasetsPlugin(p.SingletonPlugin, DefaultDatasetForm,
             }
             if resource_composite and 'resources' in data_dict:
                 for res in data_dict['resources']:
-                    expand_form_composite(res, resource_composite)
+                    expand_form_composite(res, resource_composite.copy())
             # convert composite package fields to extras so they are stored
             if composite_convert_fields:
                 schema = dict(
@@ -376,6 +380,51 @@ class SchemingDatasetsPlugin(p.SingletonPlugin, DefaultDatasetForm,
         # are not empty.
         if not hasattr(c, 'licenses'):
             c.licenses = [('', '')] + model.Package.get_license_options()
+
+    def configure(self, config):
+        self._dataset_form_pages = {}
+
+        for t, schema in self._expanded_schemas.items():
+            pages = []
+            self._dataset_form_pages[t] = pages
+
+            for f in schema['dataset_fields']:
+                if not pages or 'start_form_page' in f:
+                    fp = f.get('start_form_page', {})
+                    pages.append({
+                        'title': fp.get('title', ''),
+                        'description': fp.get('description', ''),
+                        'fields': [],
+                    })
+                pages[-1]['fields'].append(f)
+
+            if len(pages) == 1 and not pages[0]['title']:
+                # no pages defined
+                pages[:] = []
+
+    def prepare_dataset_blueprint(self, package_type, bp):
+        if self._dataset_form_pages[package_type]:
+            bp.add_url_rule(
+                '/new',
+                'scheming_new',
+                views.SchemingCreateView.as_view('new'),
+            )
+            bp.add_url_rule(
+                '/new/<id>/<page>',
+                'scheming_new_page',
+                views.SchemingCreatePageView.as_view('new_page'),
+            )
+            bp.add_url_rule(
+                '/edit/<id>',
+                'scheming_edit',
+                views.edit,
+            )
+            bp.add_url_rule(
+                '/edit/<id>/<page>',
+                'scheming_edit_page',
+                views.SchemingEditPageView.as_view('edit_page'),
+            )
+        return bp
 
 
 def expand_form_composite(data, fieldnames):
@@ -529,6 +578,9 @@ class SchemingNerfIndexPlugin(p.SingletonPlugin):
     and before_index processing than to use this plugin.
     """
     p.implements(p.IPackageController, inherit=True)
+
+    def before_dataset_index(self, data_dict):
+        return self.before_index(data_dict)
 
     def before_index(self, data_dict):
         schemas = SchemingDatasetsPlugin.instance._expanded_schemas
