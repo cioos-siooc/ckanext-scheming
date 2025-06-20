@@ -16,8 +16,10 @@
 {%- if field.get('sorted_choices') -%}
   {%- set options = options|sort(case_sensitive=false, attribute='text') -%}
 {%- endif -%}
-{%- if data[field.field_name] -%}
+{%- if data[field.field_name] is defined -%}
   {%- set option_selected = data[field.field_name]|string -%}
+{%- elif field.default is defined -%}
+  {%- set option_selected = field.default|string -%}
 {%- else -%}
   {%- set option_selected = None -%}
 {%- endif -%}
@@ -30,7 +32,7 @@
     selected=option_selected,
     error=errors[field.field_name],
     classes=field.classes if 'classes' in field else ['control-medium'],
-    attrs=dict({"class": "form-control"}, **(field.get('form_attrs', {}))),
+    attrs=dict({"class": "form-control form-select"}, **(field.get('form_attrs', {}))),
     is_required=h.scheming_field_required(field)
     )
 %}
